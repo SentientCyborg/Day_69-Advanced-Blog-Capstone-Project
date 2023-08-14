@@ -72,10 +72,10 @@ def register():
         existing_name = db.session.execute(db.select(User).where(User.username == name)).scalar()
         existing_user = db.session.execute(db.select(User).where(User.email == email)).scalar()
         if existing_name:
-            flash(f"The username {existing_name} is already in use. Please try again.")
+            flash(f"The username '{name}' is already in use. Please try again.")
             return redirect(url_for('register'))
         elif existing_user:
-            flash(f"The email '{existing_user}' is already in use. Please login.")
+            flash(f"The email '{email}' is already in use. Please login.")
             return redirect(url_for('login'))
         else:
             encrypted_password = generate_password_hash(
