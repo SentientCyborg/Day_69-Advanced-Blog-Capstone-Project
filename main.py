@@ -8,7 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
-from forms import CreatePostForm, RegisterForm
+from forms import CreatePostForm, RegisterForm, LoginForm
 
 
 app = Flask(__name__)
@@ -16,13 +16,19 @@ app.config["SECRET_KEY"] = "8BYkEfBA6O6donzWlSihBXox7C0sKR6b"
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 
-# TODO: Configure Flask-Login
-
+# Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 # CONNECT TO DB
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///posts.db"
 db = SQLAlchemy()
 db.init_app(app)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.get_or_404(User, user_id)
 
 
 # CONFIGURE TABLES
@@ -37,7 +43,6 @@ class BlogPost(db.Model):
     img_url = db.Column(db.String(250), nullable=False)
 
 
-# TODO: Create a User table for all your registered users.
 class User(UserMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
@@ -54,31 +59,57 @@ with app.app_context():
 def register():
     form = RegisterForm()
     if form.validate_on_submit():
-        encrypted_password = generate_password_hash(
-            form.password.data, method="pbkdf2:sha256", salt_length=8
-        )
+        name = form.username.data
+        email = form.email.data
+        existing_name = db.session.execute(db.select(User).where(User.username == name)).scalar()
+        existing_user = db.session.execute(db.select(User).where(User.email == email)).scalar()
+        if existing_name:
+            flash(f"The username {existing_name} is already in use. Please try again.")
+            return redirect(url_for('register'))
+        elif existing_user:
+            flash(f"The email '{existing_user}' is already in use. Please login.")
+            return redirect(url_for('login'))
+        else:
+            encrypted_password = generate_password_hash(
+                form.password.data, method="pbkdf2:sha256", salt_length=8
+            )
 
-        new_user = User(
-            username=form.username.data,
-            email=form.email.data,
-            password=encrypted_password,
-        )
+            new_user = User(
+                username=name,
+                email=email,
+                password=encrypted_password,
+            )
 
-        db.session.add(new_user)
-        db.session.commit()
+            db.session.add(new_user)
+            db.session.commit()
+            login_user(new_user)
 
-        return redirect(url_for("get_all_posts"))
+            return redirect(url_for("get_all_posts"))
     return render_template("register.html", form=form)
 
 
-# TODO: Retrieve a user from the database based on their email.
-@app.route("/login")
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    return render_template("login.html")
+    form = LoginForm()
+    if form.validate_on_submit():
+        email = form.email.data
+        result = db.session.execute(db.select(User).where(User.email == email))
+        user = result.scalar()
+        if not user:
+            flash("Email not found. Please try again.")
+            return redirect(url_for("login"))
+        elif not check_password_hash(user.password, form.password.data):
+            flash("Invalid password. Please try again.")
+            return redirect(url_for("login"))
+        else:
+            login_user(user)
+            return redirect(url_for('get_all_posts'))
+    return render_template("login.html", form=form, current_user=current_user)
 
 
 @app.route("/logout")
 def logout():
+    logout_user()
     return redirect(url_for("get_all_posts"))
 
 
