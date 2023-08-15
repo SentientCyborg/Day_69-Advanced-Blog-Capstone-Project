@@ -27,6 +27,7 @@ db = SQLAlchemy()
 db.init_app(app)
 
 def admin_only(f):
+    """Restricts the specified route to the admin."""
     @wraps(f)
     def wrapper(*args, **kwargs):
         if current_user.id != 1:
@@ -47,8 +48,9 @@ class BlogPost(db.Model):
     subtitle = db.Column(db.String(250), nullable=False)
     date = db.Column(db.String(250), nullable=False)
     body = db.Column(db.Text, nullable=False)
-    author = db.Column(db.String(250), nullable=False)
     img_url = db.Column(db.String(250), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    author = relationship("User", back_populates="posts")
 
 
 class User(UserMixin, db.Model):
@@ -57,6 +59,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(250), unique=True, nullable=False)
     password = db.Column(db.String(250), unique=False, nullable=False)
+    posts = relationship('BlogPost', back_populates="author")
 
 
 with app.app_context():
