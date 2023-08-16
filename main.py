@@ -9,7 +9,7 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 from functools import wraps
-from forms import CreatePostForm, RegisterForm, LoginForm
+from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 
 
 app = Flask(__name__)
@@ -51,7 +51,7 @@ class BlogPost(db.Model):
     img_url = db.Column(db.String(250), nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     author = relationship("User", back_populates="posts")
-
+    post_comments = relationship("Comment", back_populates="parent_post")
 
 class User(UserMixin, db.Model):
     __tablename__ = "users"
@@ -59,7 +59,19 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(250), unique=True, nullable=False)
     password = db.Column(db.String(250), unique=False, nullable=False)
-    posts = relationship('BlogPost', back_populates="author")
+    posts = relationship("BlogPost", back_populates="author")
+    user_comments = relationship("Comment", back_populates="comment_author")
+
+
+class Comment(db.Model):
+    """Stores user comments on blog posts"""
+    __tablename__ = "comments"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    comment_author = relationship("User", back_populates="user_comments")
+    post_id = db.Column(db.Integer, db.ForeignKey("blog_posts.id"))
+    parent_post = relationship("BlogPost", back_populates="post_comments")
+    text = db.Column(db.Text(length=500), nullable=False)
 
 
 with app.app_context():
