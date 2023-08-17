@@ -143,11 +143,23 @@ def get_all_posts():
     return render_template("index.html", all_posts=posts)
 
 
-# TODO: Allow logged-in users to comment on posts
-@app.route("/post/<int:post_id>")
+@app.route("/post/<int:post_id>", methods=["GET", "POST"])
 def show_post(post_id):
     requested_post = db.get_or_404(BlogPost, post_id)
-    return render_template("post.html", post=requested_post)
+    form = CommentForm()
+    if form.validate_on_submit():
+        if current_user.is_authenticated:
+            user_comment = Comment(
+                text=form.body.data,
+                comment_author=current_user,
+                parent_post=requested_post
+            )
+            db.session.add(user_comment)
+            db.session.commit()
+        else:
+            flash("Please login to leave a comment.")
+            return redirect(url_for("login"))
+    return render_template("post.html", post=requested_post, form=form)
 
 
 @admin_only
