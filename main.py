@@ -9,7 +9,7 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 from functools import wraps
-from forms import CreatePostForm, RegisterForm, LoginForm
+from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 
 
 app = Flask(__name__)
@@ -27,6 +27,7 @@ db = SQLAlchemy()
 db.init_app(app)
 
 def admin_only(f):
+    """Restricts the specified route to the admin."""
     @wraps(f)
     def wrapper(*args, **kwargs):
         if current_user.id != 1:
@@ -39,6 +40,16 @@ def load_user(user_id):
     return db.get_or_404(User, user_id)
 
 
+gravatar = Gravatar(app,
+                    size=100,
+                    rating='g',
+                    default='retro',
+                    force_default=False,
+                    force_lower=False,
+                    use_ssl=False,
+                    base_url=None)
+
+
 # CONFIGURE TABLES
 class BlogPost(db.Model):
     __tablename__ = "blog_posts"
@@ -47,8 +58,10 @@ class BlogPost(db.Model):
     subtitle = db.Column(db.String(250), nullable=False)
     date = db.Column(db.String(250), nullable=False)
     body = db.Column(db.Text, nullable=False)
-    author = db.Column(db.String(250), nullable=False)
     img_url = db.Column(db.String(250), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    author = relationship("User", back_populates="posts")
+    post_comments = relationship("Comment", back_populates="parent_post")
 
 
 class User(UserMixin, db.Model):
@@ -57,6 +70,19 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(250), unique=True, nullable=False)
     password = db.Column(db.String(250), unique=False, nullable=False)
+    posts = relationship("BlogPost", back_populates="author")
+    user_comments = relationship("Comment", back_populates="comment_author")
+
+
+class Comment(db.Model):
+    """Stores user comments on blog posts"""
+    __tablename__ = "comments"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    comment_author = relationship("User", back_populates="user_comments")
+    post_id = db.Column(db.Integer, db.ForeignKey("blog_posts.id"))
+    parent_post = relationship("BlogPost", back_populates="post_comments")
+    text = db.Column(db.Text(length=500), nullable=False)
 
 
 with app.app_context():
@@ -128,11 +154,23 @@ def get_all_posts():
     return render_template("index.html", all_posts=posts)
 
 
-# TODO: Allow logged-in users to comment on posts
-@app.route("/post/<int:post_id>")
+@app.route("/post/<int:post_id>", methods=["GET", "POST"])
 def show_post(post_id):
     requested_post = db.get_or_404(BlogPost, post_id)
-    return render_template("post.html", post=requested_post)
+    form = CommentForm()
+    if form.validate_on_submit():
+        if current_user.is_authenticated:
+            user_comment = Comment(
+                text=form.body.data,
+                comment_author=current_user,
+                parent_post=requested_post
+            )
+            db.session.add(user_comment)
+            db.session.commit()
+        else:
+            flash("Please login to leave a comment.")
+            return redirect(url_for("login"))
+    return render_template("post.html", post=requested_post, form=form)
 
 
 @admin_only
