@@ -1,8 +1,19 @@
 # Day_69-Advanced-Blog-Capstone-Project
 This is the Capstone project for Day 69 of 100 Days of Code.
 
-The project starts with a partially developed blog website and it is my job to finish the blog so that users can be added. I decided to upload the starting files and update this repo 
-as I make progress. The goal is to finish the project and to learn more about using Git.
+The project started with a partially developed blog website and the goal was to finish
+per the instructors directions. I also used this as an opportunity to practice Git. The
+project currently meets all of the instructor's requirements
+---
+For this server, the first user created is the Admin. This was per the directions, but it
+was not my preference. Only the admin can create and delete posts. Regular users can only
+add comments.
+
+If I were to improve upon this project, I would add functionality for regular users to
+be able to update their passwords and delete comments. The admin also needs the ability
+to delete comments and possibly ban users. The registration form needs better validation 
+to check for existing users and there should probably be some sort of special character 
+enforcement on passwords. 
 
 ---
 
