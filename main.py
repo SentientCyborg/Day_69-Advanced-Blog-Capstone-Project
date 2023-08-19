@@ -5,13 +5,12 @@ from flask_ckeditor import CKEditor
 from flask_gravatar import Gravatar
 from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user
 from flask_sqlalchemy import SQLAlchemy
-from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 from functools import wraps
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 
-
+# Create Flask app
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "8BYkEfBA6O6donzWlSihBXox7C0sKR6b"
 ckeditor = CKEditor(app)
@@ -35,11 +34,14 @@ def admin_only(f):
         return f(*args, **kwargs)
     return wrapper
 
+
+# Enables login functionality
 @login_manager.user_loader
 def load_user(user_id):
     return db.get_or_404(User, user_id)
 
 
+# Allows commenters to have an img pic
 gravatar = Gravatar(app,
                     size=100,
                     rating='g',
@@ -52,6 +54,7 @@ gravatar = Gravatar(app,
 
 # CONFIGURE TABLES
 class BlogPost(db.Model):
+    """Stores blog posts"""
     __tablename__ = "blog_posts"
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(250), unique=True, nullable=False)
@@ -65,6 +68,7 @@ class BlogPost(db.Model):
 
 
 class User(UserMixin, db.Model):
+    """A table for registered users on the site."""
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
@@ -85,12 +89,17 @@ class Comment(db.Model):
     text = db.Column(db.Text(length=500), nullable=False)
 
 
+# Build the database
 with app.app_context():
     db.create_all()
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    """Allows a user to register with the site if they
+    don't already have an account. Users with an account
+    will be redirected to register.
+    """
     form = RegisterForm()
     if form.validate_on_submit():
         name = form.username.data
@@ -149,6 +158,8 @@ def logout():
 
 @app.route("/")
 def get_all_posts():
+    """Creates a list of all blog posts on the
+    home page."""
     result = db.session.execute(db.select(BlogPost))
     posts = result.scalars().all()
     return render_template("index.html", all_posts=posts)
@@ -156,6 +167,8 @@ def get_all_posts():
 
 @app.route("/post/<int:post_id>", methods=["GET", "POST"])
 def show_post(post_id):
+    """Displays the entire blog post if a user
+    clicks on it from the home page."""
     requested_post = db.get_or_404(BlogPost, post_id)
     form = CommentForm()
     if form.validate_on_submit():
@@ -176,6 +189,7 @@ def show_post(post_id):
 @admin_only
 @app.route("/new-post", methods=["GET", "POST"])
 def add_new_post():
+    """Allows the admin to add new blog posts."""
     form = CreatePostForm()
     if form.validate_on_submit():
         new_post = BlogPost(
