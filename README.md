@@ -4,6 +4,7 @@ This is the Capstone project for Day 69 of 100 Days of Code.
 The project started with a partially developed blog website and the goal was to finish
 per the instructors directions. I also used this as an opportunity to practice Git. The
 project currently meets all of the instructor's requirements
+
 ---
 For this server, the first user created is the Admin. This was per the directions, but it
 was not my preference. Only the admin can create and delete posts. Regular users can only
