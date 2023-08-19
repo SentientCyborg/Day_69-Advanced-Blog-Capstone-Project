@@ -96,7 +96,7 @@ def register():
         name = form.username.data
         email = form.email.data
         existing_name = db.session.execute(db.select(User).where(User.username == name)).scalar()
-        existing_user = db.session.execute(db.select(User).where(User.email == email)).scalar()
+        existing_user = db.session.execute(db.select(User).where(User.email.lower() == email.lower())).scalar()
         if existing_name:
             flash(f"The username '{name}' is already in use. Please try again.")
             return redirect(url_for('register'))
